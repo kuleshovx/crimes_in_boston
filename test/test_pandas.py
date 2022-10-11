@@ -1,10 +1,6 @@
 
 # Import pyspark.pandas
 import pyspark.pandas as ps
-import findspark
-
-
-findspark.init()
 
 # Create pandas DataFrame
 technologies   = ({

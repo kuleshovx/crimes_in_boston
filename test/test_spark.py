@@ -1,9 +1,5 @@
 # Import SparkSession
 from pyspark.sql import SparkSession
-import findspark
-
-
-findspark.init()
 
 # Create SparkSession 
 spark = SparkSession.builder \

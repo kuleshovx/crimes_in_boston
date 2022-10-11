@@ -1,10 +1,50 @@
-# Import pyspark.pandas
 import pyspark.pandas as ps
-import findspark
 
-
-findspark.init()
 
 crime_df = ps.read_csv("data/crime.csv")
+codes_df = ps.read_csv("data/offense_codes.csv")
 
-print(crime_df)
+crime_df_wo_dup = crime_df.drop_duplicates()
+
+codes_df["crime_type"] = codes_df["NAME"].apply(lambda x: x.split(" - ")[0])
+code_df_gr = codes_df.groupby("CODE", as_index=False).aggregate({
+    "crime_type" : "first"
+})
+
+df_merged_codes = ps.merge(
+    crime_df_wo_dup,
+    code_df_gr,
+    how="left",
+    left_on="OFFENSE_CODE",
+    right_on="CODE"
+)
+
+df_grouped = df_merged_codes.groupby(["DISTRICT"], as_index=False).agg({
+    "INCIDENT_NUMBER": "count",
+    "Lat": "mean",
+    "Long": "mean"
+}).rename(columns={"DISTRICT":"district", "INCIDENT_NUMBER":"crimes_total", "Lat":"lat", "Long":"lng"})
+
+df_distr_type = df_merged_codes.groupby(["DISTRICT", "crime_type"])["INCIDENT_NUMBER"].count().reset_index()
+
+df_top_crimes = df_distr_type.groupby(["DISTRICT"]).apply(
+    lambda x: x.nlargest(3,["INCIDENT_NUMBER"])["crime_type"].str.cat(sep=", ")
+).reset_index().rename(
+    columns={"DISTRICT":"district", 0:"frequent_crime_types"}
+)
+
+df_distr_month = df_merged_codes.groupby(["DISTRICT", "YEAR", "MONTH"])["INCIDENT_NUMBER"].count().reset_index()[["DISTRICT", "INCIDENT_NUMBER"]]
+df_med_month = df_distr_month.groupby(["DISTRICT"]).median().reset_index().rename(columns={"DISTRICT":"district", "INCIDENT_NUMBER":"crimes_monthly"})
+
+df_merged = ps.merge(
+    df_grouped,
+    df_top_crimes,
+    on="district",
+)
+df_full = ps.merge(
+    df_merged,
+    df_med_month,
+    on="district",
+)
+
+df_full.to_parquet("data/result", index=False)
