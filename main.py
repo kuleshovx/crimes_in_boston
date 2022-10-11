@@ -1,8 +1,13 @@
 import pyspark.pandas as ps
+import argparse
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--input_dir", default="data")
+parser.add_argument("--output_dir", default="data/result")
+args = parser.parse_args()
 
-crime_df = ps.read_csv("data/crime.csv")
-codes_df = ps.read_csv("data/offense_codes.csv")
+crime_df = ps.read_csv(f"{args.input_dir}/crime.csv")
+codes_df = ps.read_csv(f"{args.input_dir}/offense_codes.csv")
 
 crime_df_wo_dup = crime_df.drop_duplicates()
 
@@ -47,4 +52,4 @@ df_full = ps.merge(
     on="district",
 )
 
-df_full.to_parquet("data/result", index=False)
+df_full.to_parquet(f"{args.output_dir}", index=False)
